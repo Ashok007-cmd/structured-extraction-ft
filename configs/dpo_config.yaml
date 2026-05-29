@@ -1,0 +1,48 @@
+# DPO Configuration - Preference Tuning
+# Task: Discriminating good vs bad JSON extraction outputs
+
+# Model (starting from SFT checkpoint)
+model_name_or_path: "Qwen/Qwen2.5-0.5B-Instruct"
+sft_adapter_path: "./outputs/sft/adapter"
+use_4bit: true
+bnb_4bit_compute_dtype: "bfloat16"
+bnb_4bit_quant_type: "nf4"
+bnb_4bit_use_double_quant: true
+
+# LoRA Configuration (MUST match SFT)
+lora_r: 8
+lora_alpha: 16
+lora_dropout: 0.05
+lora_target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+use_rslora: true
+
+# DPO Specific
+beta: 0.1
+loss_type: "sigmoid"  # standard DPO loss
+precompute_ref_log_probs: true   # precompute ref logprobs once → no inline ref forward pass during training
+
+# Training Arguments
+output_dir: "./outputs/dpo"
+num_train_epochs: 1
+per_device_train_batch_size: 1
+per_device_eval_batch_size: 1
+gradient_accumulation_steps: 4
+gradient_checkpointing: true     # saves VRAM by recomputing activations
+learning_rate: 5.0e-6
+warmup_steps: 10
+weight_decay: 0.01
+optim: "paged_adamw_8bit"
+lr_scheduler_type: "cosine"
+logging_steps: 5
+eval_strategy: "epoch"           # eval once per epoch to avoid memory spikes mid-training
+save_strategy: "no"
+report_to: "none"
+remove_unused_columns: false
+seed: 42
+
+# Dataset
+dataset_path: "./data/dpo_dataset"
+max_train_samples: 600
+max_eval_samples: 200
+max_length: 768                  # bumped from 512: gives 384 tokens for completions
+max_prompt_length: 384           # bumped from 256: prevents prompt truncation on long articles

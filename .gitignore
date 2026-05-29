@@ -1,0 +1,24 @@
+# Model weights, checkpoints, training artifacts (large, regenerable)
+outputs/
+data/sft_dataset/
+data/dpo_dataset/
+*.safetensors
+*.pt
+*.bin
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+.venv/
+venv/
+
+# Knowledge graph cache
+.code-review-graph/
+
+# Scratch / logs
+scratch/
+*.log

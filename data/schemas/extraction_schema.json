@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "StructuredJSONExtractionSchema",
+  "type": "object",
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "description": "The class/scenario type of the event (e.g., acquisition, funding_round, executive_hire, partnership, product_launch, earnings_report, regulatory_approval)"
+    },
+    "entities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["organization", "person", "product", "location"]
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": ["type", "name"]
+      }
+    },
+    "dates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "raw": { "type": "string" },
+          "normalized": { "type": "string" },
+          "context": { "type": "string" }
+        },
+        "required": ["raw", "normalized"]
+      }
+    },
+    "financials": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string" },
+          "amount": { "type": "number" },
+          "currency": { "type": "string" }
+        },
+        "required": ["type", "amount"]
+      }
+    },
+    "relationships": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string" },
+          "subject": { "type": "string" },
+          "object": { "type": "string" }
+        },
+        "required": ["type", "subject", "object"]
+      }
+    },
+    "metrics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "value": { "type": ["string", "number"] }
+        },
+        "required": ["name", "value"]
+      }
+    }
+  },
+  "required": ["event_type", "entities"]
+}

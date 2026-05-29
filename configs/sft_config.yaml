@@ -1,0 +1,42 @@
+# SFT Configuration - Optimized for GTX 1650 (4GB VRAM)
+model_name_or_path: "Qwen/Qwen2.5-0.5B-Instruct"
+use_4bit: true
+bnb_4bit_compute_dtype: "bfloat16"
+bnb_4bit_quant_type: "nf4"
+bnb_4bit_use_double_quant: true
+
+# LoRA
+lora_r: 8
+lora_alpha: 16
+lora_dropout: 0.05
+lora_target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+use_rslora: true
+
+# Training - optimized for speed
+output_dir: "./outputs/sft"
+num_train_epochs: 1
+per_device_train_batch_size: 1
+per_device_eval_batch_size: 1
+gradient_accumulation_steps: 4    # fewer micro-batches per step = faster
+gradient_checkpointing: true      # saves VRAM by recomputing activations
+learning_rate: 3.0e-4
+warmup_steps: 10
+weight_decay: 0.01
+optim: "paged_adamw_8bit"
+lr_scheduler_type: "cosine"
+logging_steps: 5
+eval_strategy: "no"               # skip eval during training = much faster
+save_strategy: "steps"
+save_steps: 100
+save_total_limit: 2
+max_length: 512
+packing: false
+dataloader_num_workers: 0
+report_to: "none"
+remove_unused_columns: false
+seed: 42
+
+# Dataset
+dataset_path: "./data/sft_dataset"
+max_train_samples: 2000
+max_eval_samples: 200

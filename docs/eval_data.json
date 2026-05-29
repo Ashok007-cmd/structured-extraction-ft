@@ -1,0 +1,52 @@
+{
+  "num_eval_samples": 30,
+  "models": [
+    {
+      "name": "Base Model",
+      "valid_json_rate": 0.8,
+      "metrics": {
+        "schema_compliance": 0.0,
+        "section_recall": 0.42817460317460315,
+        "section_precision": 0.9416666666666668,
+        "entity_recall": 0.6743055555555556,
+        "entity_precision": 0.8923611111111112,
+        "entity_f1": 0.7371151996151997,
+        "date_normalization_recall": 0.0,
+        "date_normalization_precision": 0.0,
+        "financial_recall": 0.125,
+        "financial_precision": 0.0,
+        "structural_fidelity": 1.0,
+        "hallucination_count": 0.75
+      },
+      "total_samples": 30,
+      "error_samples": 2
+    },
+    {
+      "name": "SFT Model",
+      "valid_json_rate": 0.36666666666666664,
+      "metrics": {
+        "schema_compliance": 0.09090909090909091,
+        "section_recall": 0.987012987012987,
+        "section_precision": 0.7389118457300277,
+        "entity_recall": 0.9818181818181819,
+        "entity_precision": 1.0,
+        "entity_f1": 0.98989898989899,
+        "date_normalization_recall": 1.0,
+        "date_normalization_precision": 1.0,
+        "financial_recall": 1.0,
+        "financial_precision": 0.9090909090909091,
+        "structural_fidelity": 1.0,
+        "hallucination_count": 0.0
+      },
+      "total_samples": 30,
+      "error_samples": 0
+    },
+    {
+      "name": "DPO Model",
+      "valid_json_rate": 0.0,
+      "metrics": {},
+      "total_samples": 30,
+      "error_samples": 0
+    }
+  ]
+}
