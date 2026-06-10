@@ -22,3 +22,11 @@ venv/
 # Scratch / logs
 scratch/
 *.log
+
+# Packaging / env
+build/
+dist/
+.env
+
+# Load test reports
+loadtest_report*.json

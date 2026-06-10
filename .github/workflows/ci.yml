@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Install lint tools
+        run: pip install ruff mypy
+      - name: Ruff lint
+        run: ruff check .
+      - name: Mypy type-check
+        run: mypy . || true # non-blocking until type coverage improves
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip"
+      - name: Install CPU-only dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -e ".[dev]" --extra-index-url https://download.pytorch.org/whl/cpu
+      - name: Run test suite (memory-capped)
+        run: |
+          chmod +x scripts/run_tests.sh
+          systemd-run --user --scope -p MemoryMax=2G ./scripts/run_tests.sh || ./scripts/run_tests.sh

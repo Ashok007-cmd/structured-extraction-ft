@@ -1,0 +1,28 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.serve
+    image: structured-extraction-api:latest
+    ports:
+      - "8000:8000"
+    environment:
+      EXTRACT_MODEL_NAME_OR_PATH: "Qwen/Qwen2.5-0.5B-Instruct"
+      EXTRACT_ADAPTER_PATH: "/app/outputs/dpo/adapter"
+      EXTRACT_USE_4BIT: "true"
+      EXTRACT_MAX_NEW_TOKENS: "512"
+    volumes:
+      - ./outputs:/app/outputs:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"]
+      interval: 30s
+      timeout: 5s
+      start_period: 120s
+      retries: 3

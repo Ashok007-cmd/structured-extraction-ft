@@ -1,0 +1,32 @@
+# Lightweight image for serving the structured-extraction model via FastAPI.
+FROM pytorch/pytorch:2.2.1-cuda12.1-cudnn8-runtime
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install python dependencies first for better layer caching
+COPY pyproject.toml ./
+COPY scripts/__init__.py scripts/__init__.py
+COPY scripts/utils ./scripts/utils
+COPY serving ./serving
+RUN pip install --no-cache-dir ".[serving]"
+
+# Copy the rest of the source needed at runtime
+COPY scripts ./scripts
+COPY data/schemas ./data/schemas
+
+ENV HF_HUB_OFFLINE=0 \
+    TOKENIZERS_PARALLELISM=false \
+    EXTRACT_HOST=0.0.0.0 \
+    EXTRACT_PORT=8000
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=120s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')" || exit 1
+
+CMD ["uvicorn", "serving.api:app", "--host", "0.0.0.0", "--port", "8000"]
