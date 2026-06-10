@@ -43,8 +43,21 @@
     },
     {
       "name": "DPO Model",
-      "valid_json_rate": 0.0,
-      "metrics": {},
+      "valid_json_rate": 0.5666666666666667,
+      "metrics": {
+        "schema_compliance": 0.058823529411764705,
+        "section_recall": 0.9663865546218486,
+        "section_precision": 0.853874883286648,
+        "entity_recall": 1.0,
+        "entity_precision": 1.0,
+        "entity_f1": 1.0,
+        "date_normalization_recall": 1.0,
+        "date_normalization_precision": 1.0,
+        "financial_recall": 0.9411764705882353,
+        "financial_precision": 0.9117647058823529,
+        "structural_fidelity": 1.0,
+        "hallucination_count": 0.0
+      },
       "total_samples": 30,
       "error_samples": 0
     }

@@ -17,7 +17,8 @@ def test_get_dtype():
 @patch("scripts.utils.model_loader.AutoTokenizer")
 @patch("scripts.utils.model_loader.AutoModelForCausalLM")
 @patch("scripts.utils.model_loader.PeftModel")
-def test_load_quantized_model_and_tokenizer(mock_peft, mock_causal_lm, mock_tokenizer):
+@patch("scripts.utils.model_loader.prepare_model_for_kbit_training")
+def test_load_quantized_model_and_tokenizer(mock_prep, mock_peft, mock_causal_lm, mock_tokenizer):
     # Mock return values
     mock_tok = MagicMock()
     mock_tok.pad_token = None
@@ -25,6 +26,7 @@ def test_load_quantized_model_and_tokenizer(mock_peft, mock_causal_lm, mock_toke
 
     mock_model = MagicMock()
     mock_causal_lm.from_pretrained.return_value = mock_model
+    mock_prep.return_value = mock_model
 
     mock_peft_model = MagicMock()
     mock_peft.from_pretrained.return_value = mock_peft_model
@@ -44,7 +46,7 @@ def test_load_quantized_model_and_tokenizer(mock_peft, mock_causal_lm, mock_toke
 
     mock_tokenizer.from_pretrained.assert_called_with(
         "mock-base-path",
-        trust_remote_code=True,
+        trust_remote_code=False,
         padding_side="left"
     )
 
@@ -54,6 +56,7 @@ def test_load_quantized_model_and_tokenizer(mock_peft, mock_causal_lm, mock_toke
     assert kwargs["torch_dtype"] == torch.float16
     assert kwargs["attn_implementation"] == "sdpa"
     assert kwargs["quantization_config"] is not None
+    assert kwargs["trust_remote_code"] is False
 
     # 2. Test model load with PEFT adapter (is_trainable=True)
     with patch("scripts.utils.model_loader.Path.exists", return_value=True):
@@ -66,9 +69,11 @@ def test_load_quantized_model_and_tokenizer(mock_peft, mock_causal_lm, mock_toke
         )
         
         assert model == mock_peft_model
+        mock_prep.assert_called_once_with(mock_model)
         mock_peft.from_pretrained.assert_called_once_with(
             mock_model,
             "mock-adapter-path",
             is_trainable=True
         )
         mock_peft_model.train.assert_called_once()
+

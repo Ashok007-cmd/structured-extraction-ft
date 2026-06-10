@@ -68,7 +68,8 @@ class EvalConfig:
     dataset_path: str = "./data/sft_dataset"
     eval_split: str = "eval"
     max_eval_samples: int = 30
-    max_new_tokens: int = 200   # 200 is enough for JSON; 512 wastes VRAM and slows eval
+    max_new_tokens: int = 512   # full extraction JSON needs ~370 tokens; 200 truncated every
+                                # output mid-object (0% valid). 512 gives headroom to close.
     seed: int = 42
 
 

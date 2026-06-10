@@ -3,7 +3,7 @@ import torch
 from pathlib import Path
 from typing import Optional, Tuple
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
-from peft import PeftModel
+from peft import PeftModel, prepare_model_for_kbit_training
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +13,15 @@ def get_dtype(dtype_str: str) -> torch.dtype:
         "bfloat16": torch.bfloat16,
         "float32": torch.float32,
     }
-    return mapping.get(dtype_str, torch.bfloat16)
+    dtype = mapping.get(dtype_str, torch.bfloat16)
+    if dtype == torch.bfloat16 and torch.cuda.is_available():
+        if not torch.cuda.is_bf16_supported():
+            logger.warning(
+                "bfloat16 is not natively supported by this GPU. "
+                "Falling back to float16 for stability and performance."
+            )
+            return torch.float16
+    return dtype
 
 class ModelLoader:
     @staticmethod
@@ -27,6 +35,7 @@ class ModelLoader:
         is_trainable: bool = False,
         attn_implementation: str = "sdpa",
         padding_side: str = "right",
+        trust_remote_code: bool = False,
     ) -> Tuple[AutoModelForCausalLM, AutoTokenizer]:
         """
         Unified Model Loader for Quantized Qwen Base Model and optional LoRA adapter.
@@ -50,7 +59,7 @@ class ModelLoader:
         logger.info(f"Loading tokenizer from: {tokenizer_load_path}")
         tokenizer = AutoTokenizer.from_pretrained(
             tokenizer_load_path,
-            trust_remote_code=True,
+            trust_remote_code=trust_remote_code,
             padding_side=padding_side,
         )
         if tokenizer.pad_token is None:
@@ -62,11 +71,18 @@ class ModelLoader:
             model_name_or_path,
             quantization_config=bnb_config,
             device_map="auto",
-            trust_remote_code=True,
+            trust_remote_code=trust_remote_code,
             torch_dtype=compute_dtype,
             attn_implementation=attn_implementation,
         )
-        model.config.use_cache = not is_trainable
+        
+        if is_trainable:
+            model.config.use_cache = False
+            if use_4bit:
+                logger.info("Preparing model for k-bit training")
+                model = prepare_model_for_kbit_training(model)
+        else:
+            model.config.use_cache = True
 
         # 4. Attach Adapter if provided
         if adapter_path and Path(adapter_path).exists():
@@ -78,3 +94,4 @@ class ModelLoader:
                 model.eval()
 
         return model, tokenizer
+

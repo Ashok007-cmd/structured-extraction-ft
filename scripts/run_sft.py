@@ -19,7 +19,6 @@ import sys
 import yaml
 import logging
 from pathlib import Path
-from dataclasses import dataclass
 from typing import Optional, Dict, Any
 
 import torch
@@ -30,9 +29,13 @@ from transformers import (
     BitsAndBytesConfig,
     set_seed,
 )
-from peft import LoraConfig, prepare_model_for_kbit_training
+from peft import LoraConfig
 from trl import SFTTrainer, SFTConfig
 from datasets import load_dataset
+
+sys.path.append(str(Path(__file__).parent.parent.resolve()))
+from scripts.utils.config import SFTConfigData
+from scripts.utils.model_loader import ModelLoader, get_dtype
 
 logging.basicConfig(
     level=logging.INFO,
@@ -42,85 +45,11 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class SFTConfigData:
-    """SFT configuration loaded from YAML with CLI overrides."""
-    # Model
-    model_name_or_path: str = "Qwen/Qwen2.5-0.5B-Instruct"
-    use_4bit: bool = True
-    bnb_4bit_compute_dtype: str = "bfloat16"
-    bnb_4bit_quant_type: str = "nf4"
-    bnb_4bit_use_double_quant: bool = True
-
-    # LoRA
-    lora_r: int = 16
-    lora_alpha: int = 32
-    lora_dropout: float = 0.05
-    lora_target_modules: list = None
-    use_rslora: bool = True
-
-    # Training
-    output_dir: str = "./outputs/sft"
-    num_train_epochs: int = 1
-    per_device_train_batch_size: int = 1
-    per_device_eval_batch_size: int = 1
-    gradient_accumulation_steps: int = 4
-    gradient_checkpointing: bool = True
-    learning_rate: float = 3.0e-4
-    warmup_steps: int = 10
-    weight_decay: float = 0.01
-    optim: str = "paged_adamw_8bit"
-    lr_scheduler_type: str = "cosine"
-    logging_steps: int = 5
-    eval_strategy: str = "no"
-    eval_steps: int = 50
-    save_strategy: str = "steps"
-    save_steps: int = 100
-    save_total_limit: int = 2
-    load_best_model_at_end: bool = False
-    metric_for_best_model: str = "eval_loss"
-    greater_is_better: bool = False
-    max_length: int = 512
-    packing: bool = False
-    report_to: str = "none"
-    remove_unused_columns: bool = False
-    dataloader_num_workers: int = 0
-    seed: int = 42
-
-    # Dataset
-    dataset_path: str = "./data/sft_dataset"
-    max_train_samples: int = 2000
-    max_eval_samples: int = 200
-
-    def __post_init__(self):
-        if self.lora_target_modules is None:
-            self.lora_target_modules = [
-                "q_proj", "k_proj", "v_proj", "o_proj",
-                "gate_proj", "up_proj", "down_proj",
-            ]
-
-
-def load_config(config_path: str) -> SFTConfigData:
-    """Load YAML config and return SFTConfigData dataclass."""
-    with open(config_path) as f:
-        cfg_dict = yaml.safe_load(f)
-    return SFTConfigData(**cfg_dict)
-
-
-def get_dtype(dtype_str: str) -> torch.dtype:
-    mapping = {
-        "float16": torch.float16,
-        "bfloat16": torch.bfloat16,
-        "float32": torch.float32,
-    }
-    return mapping.get(dtype_str, torch.bfloat16)
-
-
 def main():
     # --- Parse config ---
     config_path = sys.argv[1] if len(sys.argv) > 1 else "configs/sft_config.yaml"
     logger.info(f"Loading config from: {config_path}")
-    cfg = load_config(config_path)
+    cfg = SFTConfigData.from_yaml(config_path)
     set_seed(cfg.seed)
 
     # --- Prepare output dir ---
@@ -128,52 +57,28 @@ def main():
 
     # Save config for reproducibility
     with open(Path(cfg.output_dir) / "sft_config.yaml", "w") as f:
-        yaml.dump(vars(cfg), f, default_flow_style=False)
+        yaml.dump(cfg.model_dump(), f, default_flow_style=False)
 
     device = torch.cuda.current_device()
     logger.info(f"Using device: {torch.cuda.get_device_name(device)}")
     logger.info(f"Memory: {torch.cuda.get_device_properties(device).total_memory / 1e9:.2f} GB")
 
     # ================================================================
-    # 1. LOAD TOKENIZER
+    # 1. LOAD MODEL & TOKENIZER USING UNIFIED MODEL LOADER
     # ================================================================
-    logger.info(f"Loading tokenizer: {cfg.model_name_or_path}")
-    tokenizer = AutoTokenizer.from_pretrained(
-        cfg.model_name_or_path,
-        trust_remote_code=True,
-        padding_side="right",
-    )
-
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
-    if tokenizer.chat_template is None:
-        logger.warning("No chat template found; using default.")
-
-    # ================================================================
-    # 2. LOAD MODEL WITH QLORA QUANTIZATION
-    # ================================================================
-    compute_dtype = get_dtype(cfg.bnb_4bit_compute_dtype)
-
-    bnb_config = BitsAndBytesConfig(
-        load_in_4bit=cfg.use_4bit,
-        bnb_4bit_compute_dtype=compute_dtype,
+    model, tokenizer = ModelLoader.load_quantized_model_and_tokenizer(
+        model_name_or_path=cfg.model_name_or_path,
+        adapter_path=None,
+        use_4bit=cfg.use_4bit,
+        bnb_4bit_compute_dtype=cfg.bnb_4bit_compute_dtype,
         bnb_4bit_quant_type=cfg.bnb_4bit_quant_type,
         bnb_4bit_use_double_quant=cfg.bnb_4bit_use_double_quant,
+        is_trainable=True,
+        attn_implementation="sdpa",
+        padding_side="right",
+        trust_remote_code=False,
     )
 
-    logger.info(f"Loading model: {cfg.model_name_or_path}")
-    logger.info(f"  Quantization: 4-bit NF4 + double quant")
-    logger.info(f"  Compute dtype: {cfg.bnb_4bit_compute_dtype}")
-
-    model = AutoModelForCausalLM.from_pretrained(
-        cfg.model_name_or_path,
-        quantization_config=bnb_config,
-        device_map="auto",
-        trust_remote_code=True,
-    )
-
-    model = prepare_model_for_kbit_training(model)
-    model.config.use_cache = False  # Required for gradient checkpointing
 
     # ================================================================
     # 3. CONFIGURE LORA (TRL 1.5.0 applies PEFT internally)
@@ -232,6 +137,8 @@ def main():
     # ================================================================
     # 6. SFT CONFIG (TRL 1.5.0 uses SFTConfig, not TrainingArguments)
     # ================================================================
+    compute_dtype = get_dtype(cfg.bnb_4bit_compute_dtype)
+
     # Build args dynamically based on eval_strategy
     sft_args = dict(
         output_dir=cfg.output_dir,
@@ -253,9 +160,10 @@ def main():
         report_to=cfg.report_to,
         remove_unused_columns=cfg.remove_unused_columns,
         dataloader_num_workers=cfg.dataloader_num_workers,
+        dataloader_pin_memory=True,
         seed=cfg.seed,
-        bf16=False,
-        fp16=False,
+        bf16=compute_dtype == torch.bfloat16,
+        fp16=compute_dtype == torch.float16,
         logging_first_step=True,
     )
 
@@ -309,7 +217,7 @@ def main():
 
     # Also save the adapter only
     adapter_path = Path(cfg.output_dir) / "adapter"
-    trainer.model.save_pretrained(str(adapter_path))
+    trainer.model.save_pretrained(str(adapter_path), safe_serialization=True)
     tokenizer.save_pretrained(str(adapter_path))
 
     # Save training metrics
