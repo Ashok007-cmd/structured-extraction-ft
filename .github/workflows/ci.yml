@@ -8,32 +8,63 @@ on:
 
 jobs:
   lint:
+    name: Lint & Type-check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.10"
+
       - name: Install lint tools
         run: pip install ruff mypy
+
       - name: Ruff lint
         run: ruff check .
+
+      - name: Ruff format check
+        run: ruff format --check .
+
       - name: Mypy type-check
-        run: mypy . || true # non-blocking until type coverage improves
+        run: mypy . || true  # non-blocking until type coverage improves
 
   test:
+    name: Test Suite (CPU-only)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.10"
           cache: "pip"
+
       - name: Install CPU-only dependencies
         run: |
           pip install --upgrade pip
           pip install -e ".[dev,serving]" --extra-index-url https://download.pytorch.org/whl/cpu
+
       - name: Run test suite (memory-capped)
         run: |
           chmod +x scripts/run_tests.sh
           systemd-run --user --scope -p MemoryMax=2G ./scripts/run_tests.sh || ./scripts/run_tests.sh
+
+  docker-build-check:
+    name: Docker Build Smoke Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build serving image (no push)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.serve
+          push: false
+          tags: structured-extraction-ft:ci-test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
