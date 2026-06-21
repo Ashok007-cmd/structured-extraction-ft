@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- GHCR Docker image publishing workflow (`.github/workflows/docker-publish.yml`): builds and pushes serving and training images to GitHub Container Registry on every push to `main` and on tagged releases. Resolves "No packages published" in the GitHub Packages sidebar.
+- Docker build smoke test job in CI (`ci.yml`) that validates the serving image builds correctly on every PR.
+- `ruff format --check` step in CI for consistent code formatting enforcement.
+
+### Changed
+- README completely overhauled: centered hero section with brain emoji, 7 live status badges (CI, Docker, License, Python, Ruff, GHCR, PyPI), cleaner Results table, improved Quick Start with Docker pull instructions, and a dedicated Docker Images section.
+- `pyproject.toml`: fixed author name to "Ashok Kumar V" with email; added GPU NVIDIA CUDA and Python library classifiers; added Documentation and GHCR Docker URLs to project URLs.
+- CI workflow renamed jobs to descriptive names ("Lint & Type-check", "Test Suite (CPU-only)").
+
+
+### Added
 - Open-source project scaffolding: `LICENSE` (Apache-2.0), `CONTRIBUTING.md`,
   `CODE_OF_CONDUCT.md`, `SECURITY.md`, issue/PR templates.
 - Continuous integration workflow (lint, type-check, memory-capped tests).
