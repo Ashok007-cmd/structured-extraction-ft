@@ -13,6 +13,7 @@ Adapter: LoRA (rank=16, alpha=32) on all attention + feed-forward layers
 Compatible with TRL >= 1.5.0 (SFTConfig + SFTTrainer)
 """
 
+import gc
 import json
 import os
 import sys
@@ -20,6 +21,11 @@ import yaml
 import logging
 from pathlib import Path
 from typing import Optional, Dict, Any
+
+# Prevent CUDA allocator fragmentation on low-VRAM GPUs (must be set before torch import).
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+# Suppress tokenizer fork-warning noise and avoid extra worker processes.
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
 import torch
 import transformers
@@ -45,6 +51,24 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def _check_system_memory() -> None:
+    """Warn if available RAM is dangerously low before training starts."""
+    try:
+        import psutil
+        vm = psutil.virtual_memory()
+        available_gb = vm.available / 1e9
+        total_gb = vm.total / 1e9
+        logger.info(f"System RAM: {available_gb:.1f} GB available / {total_gb:.1f} GB total")
+        if available_gb < 4.0:
+            logger.warning(
+                f"Only {available_gb:.1f} GB RAM available. Training may trigger the OOM killer "
+                "and crash the system. Consider closing other applications or reducing "
+                "max_train_samples in the config."
+            )
+    except ImportError:
+        pass  # psutil optional
+
+
 def main():
     # --- Parse config ---
     config_path = sys.argv[1] if len(sys.argv) > 1 else "configs/sft_config.yaml"
@@ -52,12 +76,18 @@ def main():
     cfg = SFTConfigData.from_yaml(config_path)
     set_seed(cfg.seed)
 
+    _check_system_memory()
+
     # --- Prepare output dir ---
     Path(cfg.output_dir).mkdir(parents=True, exist_ok=True)
 
     # Save config for reproducibility
     with open(Path(cfg.output_dir) / "sft_config.yaml", "w") as f:
         yaml.dump(cfg.model_dump(), f, default_flow_style=False)
+
+    if not torch.cuda.is_available():
+        logger.error("CUDA is required for training. No GPU detected.")
+        sys.exit(1)
 
     device = torch.cuda.current_device()
     logger.info(f"Using device: {torch.cuda.get_device_name(device)}")
@@ -160,7 +190,10 @@ def main():
         report_to=cfg.report_to,
         remove_unused_columns=cfg.remove_unused_columns,
         dataloader_num_workers=cfg.dataloader_num_workers,
-        dataloader_pin_memory=True,
+        # pin_memory=True locks pages in RAM that cannot be swapped — on a machine with
+        # limited RAM (≤12 GB) this exhausts swap and triggers the Linux OOM killer,
+        # which can kill the display server and appear as a system shutdown.
+        dataloader_pin_memory=False,
         seed=cfg.seed,
         bf16=compute_dtype == torch.bfloat16,
         fp16=compute_dtype == torch.float16,
@@ -206,6 +239,11 @@ def main():
     logger.info("=" * 60)
 
     trainer.train()
+
+    # Free optimizer / gradient state immediately after training to reclaim VRAM.
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
     # ================================================================
     # 9. SAVE FINAL MODEL

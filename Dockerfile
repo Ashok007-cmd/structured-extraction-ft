@@ -20,6 +20,7 @@ COPY . .
 # Set offline mode environment variables
 ENV HF_HUB_OFFLINE=1
 ENV TOKENIZERS_PARALLELISM=false
+ENV PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 # Default command: run pytest then start pipeline
 CMD ["bash", "-c", "pytest tests/ && python3 scripts/full_pipeline.py"]

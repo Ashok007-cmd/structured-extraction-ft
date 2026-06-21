@@ -4,6 +4,7 @@ Wraps the same `ModelLoader` used by the training scripts so the serving
 runtime stays consistent with how the model was trained and evaluated.
 """
 
+import gc
 import json
 import logging
 import re
@@ -99,6 +100,9 @@ class ExtractionModel:
     def unload(self) -> None:
         self.model = None
         self.tokenizer = None
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
     def extract(self, text: str) -> Tuple[Optional[dict], str, bool, float]:
         """Run extraction on `text`.

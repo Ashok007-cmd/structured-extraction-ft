@@ -25,6 +25,8 @@ logger = logging.getLogger(__name__)
 os.environ["HF_HUB_OFFLINE"] = "1"
 # Reduce VRAM fragmentation on low-memory GPUs (GTX 1650 / 4 GB)
 os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+# Suppress tokenizer forking noise and avoid accidental extra worker processes.
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
 
 def run_command(cmd: list, description: str):
@@ -59,6 +61,28 @@ def skip_if_exists(path: str, description: str, force: bool) -> bool:
     return False
 
 
+def _warn_if_low_memory() -> None:
+    """Emit a warning when system RAM is below the safe threshold for training."""
+    try:
+        import psutil
+        vm = psutil.virtual_memory()
+        available_gb = vm.available / 1e9
+        swap = psutil.swap_memory()
+        swap_gb = swap.total / 1e9
+        logger.info(
+            f"System memory: {available_gb:.1f} GB RAM available, "
+            f"{swap_gb:.1f} GB swap total"
+        )
+        if available_gb < 4.0:
+            logger.warning(
+                "LOW MEMORY WARNING: less than 4 GB RAM available. "
+                "Training may exhaust system memory and trigger an OOM shutdown. "
+                "Close other applications before continuing."
+            )
+    except ImportError:
+        pass
+
+
 def main():
     parser = argparse.ArgumentParser(description="End-to-end SFT → DPO → Eval pipeline")
     parser.add_argument("--force", action="store_true",
@@ -69,6 +93,7 @@ def main():
     args = parser.parse_args()
 
     logger.info("Starting End-to-End Model Fine-Tuning Pipeline")
+    _warn_if_low_memory()
     t_start = time.time()
 
     # 1. Pre-Check: Run Unit Tests (opt-in — importing the full suite spikes RAM)

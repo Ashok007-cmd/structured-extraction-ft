@@ -7,6 +7,7 @@ between "good" and "bad" structured JSON outputs for the same input text.
 Optimized for 4GB VRAM using single-model DPO and reference probability precomputation.
 """
 
+import gc
 import json
 import os
 import sys
@@ -14,6 +15,10 @@ from pathlib import Path
 from typing import Optional, List
 import yaml
 import logging
+
+# Prevent CUDA allocator fragmentation on low-VRAM GPUs (must be set before torch import).
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
 import torch
 from transformers import set_seed
@@ -213,7 +218,10 @@ def main():
         bf16=compute_dtype == torch.bfloat16,
         fp16=compute_dtype == torch.float16,
         logging_first_step=True,
-        
+        # Pinned memory locks RAM pages that cannot be swapped — keeps False to avoid
+        # exhausting the limited swap on low-RAM laptops and triggering the OOM killer.
+        dataloader_pin_memory=False,
+        dataloader_num_workers=0,
         # DPO specific parameters
         beta=cfg.beta,
         loss_type=cfg.loss_type,
@@ -246,6 +254,11 @@ def main():
     # ================================================================
     logger.info("STARTING DPO TRAINING")
     trainer.train()
+
+    # Free optimizer / gradient state immediately after training to reclaim VRAM.
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
     # ================================================================
     # 9. SAVE

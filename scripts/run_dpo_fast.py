@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 """DPO training — single PeftModel with ref_model=None (TRL creates internal ref adapter)."""
 
-import json, logging
+import json, logging, os
 from pathlib import Path
+
+# Prevent CUDA allocator fragmentation on low-VRAM GPUs (must be set before torch import).
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
@@ -27,7 +31,7 @@ bnb = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.float16
 
 model = AutoModelForCausalLM.from_pretrained(BASE, quantization_config=bnb,
                                               torch_dtype=torch.float16,
-                                              device_map="auto", trust_remote_code=True)
+                                              device_map="auto", trust_remote_code=False)
 model.config.use_cache = False
 model = PeftModel.from_pretrained(model, str(SFT_ADAPTER), is_trainable=True)
 model.train()
@@ -39,7 +43,7 @@ logger.info(f"Model: {total:,} params, {trainable:,} trainable")
 # ================================================================
 # 2. TOKENIZER
 # ================================================================
-tokenizer = AutoTokenizer.from_pretrained(str(SFT_ADAPTER), trust_remote_code=True)
+tokenizer = AutoTokenizer.from_pretrained(str(SFT_ADAPTER), trust_remote_code=False)
 tokenizer.pad_token = tokenizer.eos_token
 
 # ================================================================
@@ -80,6 +84,8 @@ args = DPOConfig(
     beta=0.1,
     loss_type="sigmoid",
     dataloader_num_workers=0,
+    # Pinned memory cannot be swapped — keep False on low-RAM laptops to prevent OOM kills.
+    dataloader_pin_memory=False,
     remove_unused_columns=False,
 )
 
