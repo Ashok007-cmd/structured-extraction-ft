@@ -41,8 +41,14 @@ def test_run_dpo_main(mock_trainer_cls, mock_load_dataset, mock_load_quantized, 
     # Import and run main
     from scripts.run_dpo import main
 
-    # We pass a test config or mock CLI arg
-    with patch("sys.argv", ["run_dpo.py", "configs/dpo_config.yaml"]):
+    mock_props = MagicMock()
+    mock_props.total_memory = 4_000_000_000
+    with (
+        patch("torch.cuda.current_device", return_value=0),
+        patch("torch.cuda.get_device_name", return_value="Mock GPU"),
+        patch("torch.cuda.get_device_properties", return_value=mock_props),
+        patch("sys.argv", ["run_dpo.py", "configs/dpo_config.yaml"]),
+    ):
         main()
 
     # Verify main calls
