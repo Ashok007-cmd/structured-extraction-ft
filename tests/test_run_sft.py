@@ -46,7 +46,8 @@ def test_run_sft_main(mock_trainer_cls, mock_load_dataset, mock_load_quantized, 
     mock_props = MagicMock()
     mock_props.total_memory = 4_000_000_000
     with (
-        patch("torch.cuda.is_available", return_value=True),
+        patch("scripts.run_sft.SFTConfig"),            # prevent TRL's internal CUDA setup
+        patch("torch.cuda.is_available", return_value=True),  # bypass sys.exit guard
         patch("torch.cuda.current_device", return_value=0),
         patch("torch.cuda.get_device_name", return_value="Mock GPU"),
         patch("torch.cuda.get_device_properties", return_value=mock_props),
