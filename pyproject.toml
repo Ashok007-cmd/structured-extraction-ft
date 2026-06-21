@@ -10,7 +10,7 @@ readme = "README.md"
 license = { text = "Apache-2.0" }
 requires-python = ">=3.10"
 authors = [
-    { name = "Project Contributors" },
+    { name = "Ashok Kumar V", email = "ashok007cmd@gmail.com" },
 ]
 keywords = ["llm", "fine-tuning", "lora", "qlora", "dpo", "json-extraction", "fastapi"]
 classifiers = [
@@ -20,6 +20,8 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Environment :: GPU :: NVIDIA CUDA",
 ]
 
 dependencies = [
@@ -62,9 +64,11 @@ dev = [
 Homepage = "https://github.com/Ashok007-cmd/structured-extraction-ft"
 Issues = "https://github.com/Ashok007-cmd/structured-extraction-ft/issues"
 Changelog = "https://github.com/Ashok007-cmd/structured-extraction-ft/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/Ashok007-cmd/structured-extraction-ft/blob/main/docs/ARCHITECTURE.md"
+"Docker Hub (GHCR)" = "https://ghcr.io/ashok007-cmd/structured-extraction-ft"
 
 [tool.setuptools.packages.find]
-include = ["scripts*", "serving*"]
+include = ["scripts*", "serving*", "data*"]
 
 [tool.ruff]
 line-length = 100
