@@ -1,9 +1,10 @@
 import logging
-import torch
 from pathlib import Path
 from typing import Optional, Tuple
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+
+import torch
 from peft import PeftModel, prepare_model_for_kbit_training
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +76,7 @@ class ModelLoader:
             torch_dtype=compute_dtype,
             attn_implementation=attn_implementation,
         )
-        
+
         if is_trainable:
             model.config.use_cache = False
             if use_4bit:

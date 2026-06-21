@@ -1,19 +1,15 @@
-import json
 import random
-import pytest
+
 from data.generate_dataset import (
     TEMPLATES,
-    PERSONS,
-    ORGANIZATIONS,
-    LOCATIONS,
-    PRODUCTS,
+    corrupt_json,
+    generate_dpo_example,
+    generate_sft_example,
     pick,
     sample_amount,
     sample_date_pair,
-    generate_sft_example,
-    corrupt_json,
-    generate_dpo_example
 )
+
 
 def test_pick():
     # Test pick basic functionality
@@ -62,7 +58,7 @@ def test_generate_sft_example():
 
         # Verify json_string is minified (no newlines/indentation)
         assert "\n" not in ex["json_string"]
-        
+
         # Verify schema
         struct = ex["structured_json"]
         assert "event_type" in struct
@@ -108,7 +104,7 @@ def test_generate_dpo_example():
             "entities": [{"type": "organization", "name": "NexGen Dynamics"}]
         }
     }
-    
+
     random.seed(42)
     dpo_ex = generate_dpo_example(sft_example)
     assert dpo_ex is not None

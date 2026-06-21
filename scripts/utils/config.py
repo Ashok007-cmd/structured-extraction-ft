@@ -1,7 +1,8 @@
+from typing import List, Optional
+
 import yaml
-from pathlib import Path
-from typing import Optional, List
 from pydantic import BaseModel, Field, field_validator
+
 
 class BaseConfigData(BaseModel):
     """Base Configuration with shared hyperparameters for training."""

@@ -32,7 +32,7 @@ jobs:
       - name: Install CPU-only dependencies
         run: |
           pip install --upgrade pip
-          pip install -e ".[dev]" --extra-index-url https://download.pytorch.org/whl/cpu
+          pip install -e ".[dev,serving]" --extra-index-url https://download.pytorch.org/whl/cpu
       - name: Run test suite (memory-capped)
         run: |
           chmod +x scripts/run_tests.sh

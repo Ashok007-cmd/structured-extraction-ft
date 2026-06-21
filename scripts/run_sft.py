@@ -15,12 +15,12 @@ Compatible with TRL >= 1.5.0 (SFTConfig + SFTTrainer)
 
 import gc
 import json
+import logging
 import os
 import sys
-import yaml
-import logging
 from pathlib import Path
-from typing import Optional, Dict, Any
+
+import yaml
 
 # Prevent CUDA allocator fragmentation on low-VRAM GPUs (must be set before torch import).
 os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
@@ -28,16 +28,12 @@ os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
 import torch
-import transformers
+from datasets import load_dataset
+from peft import LoraConfig
 from transformers import (
-    AutoModelForCausalLM,
-    AutoTokenizer,
-    BitsAndBytesConfig,
     set_seed,
 )
-from peft import LoraConfig
-from trl import SFTTrainer, SFTConfig
-from datasets import load_dataset
+from trl import SFTConfig, SFTTrainer
 
 sys.path.append(str(Path(__file__).parent.parent.resolve()))
 from scripts.utils.config import SFTConfigData
@@ -113,7 +109,7 @@ def main():
     # ================================================================
     # 3. CONFIGURE LORA (TRL 1.5.0 applies PEFT internally)
     # ================================================================
-    logger.info(f"Configuring LoRA:")
+    logger.info("Configuring LoRA:")
     logger.info(f"  r={cfg.lora_r}, alpha={cfg.lora_alpha}, dropout={cfg.lora_dropout}")
     logger.info(f"  targets: {cfg.lora_target_modules}")
     logger.info(f"  rslora: {cfg.use_rslora}")
@@ -170,35 +166,35 @@ def main():
     compute_dtype = get_dtype(cfg.bnb_4bit_compute_dtype)
 
     # Build args dynamically based on eval_strategy
-    sft_args = dict(
-        output_dir=cfg.output_dir,
-        num_train_epochs=cfg.num_train_epochs,
-        per_device_train_batch_size=cfg.per_device_train_batch_size,
-        per_device_eval_batch_size=cfg.per_device_eval_batch_size,
-        gradient_accumulation_steps=cfg.gradient_accumulation_steps,
-        gradient_checkpointing=cfg.gradient_checkpointing,
-        learning_rate=cfg.learning_rate,
-        warmup_steps=cfg.warmup_steps,
-        weight_decay=cfg.weight_decay,
-        optim=cfg.optim,
-        lr_scheduler_type=cfg.lr_scheduler_type,
-        logging_steps=cfg.logging_steps,
-        eval_strategy=cfg.eval_strategy,
-        save_strategy=cfg.save_strategy,
-        save_steps=cfg.save_steps,
-        save_total_limit=cfg.save_total_limit,
-        report_to=cfg.report_to,
-        remove_unused_columns=cfg.remove_unused_columns,
-        dataloader_num_workers=cfg.dataloader_num_workers,
+    sft_args = {
+        "output_dir": cfg.output_dir,
+        "num_train_epochs": cfg.num_train_epochs,
+        "per_device_train_batch_size": cfg.per_device_train_batch_size,
+        "per_device_eval_batch_size": cfg.per_device_eval_batch_size,
+        "gradient_accumulation_steps": cfg.gradient_accumulation_steps,
+        "gradient_checkpointing": cfg.gradient_checkpointing,
+        "learning_rate": cfg.learning_rate,
+        "warmup_steps": cfg.warmup_steps,
+        "weight_decay": cfg.weight_decay,
+        "optim": cfg.optim,
+        "lr_scheduler_type": cfg.lr_scheduler_type,
+        "logging_steps": cfg.logging_steps,
+        "eval_strategy": cfg.eval_strategy,
+        "save_strategy": cfg.save_strategy,
+        "save_steps": cfg.save_steps,
+        "save_total_limit": cfg.save_total_limit,
+        "report_to": cfg.report_to,
+        "remove_unused_columns": cfg.remove_unused_columns,
+        "dataloader_num_workers": cfg.dataloader_num_workers,
         # pin_memory=True locks pages in RAM that cannot be swapped — on a machine with
         # limited RAM (≤12 GB) this exhausts swap and triggers the Linux OOM killer,
         # which can kill the display server and appear as a system shutdown.
-        dataloader_pin_memory=False,
-        seed=cfg.seed,
-        bf16=compute_dtype == torch.bfloat16,
-        fp16=compute_dtype == torch.float16,
-        logging_first_step=True,
-    )
+        "dataloader_pin_memory": False,
+        "seed": cfg.seed,
+        "bf16": compute_dtype == torch.bfloat16,
+        "fp16": compute_dtype == torch.float16,
+        "logging_first_step": True,
+    }
 
     # SFTConfig-specific params
     sft_args["max_length"] = cfg.max_length

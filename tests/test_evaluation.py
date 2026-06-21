@@ -1,5 +1,5 @@
-import pytest
-from scripts.evaluate import extract_json, compute_metrics
+from scripts.evaluate import compute_metrics, extract_json
+
 
 def test_extract_json():
     # 1. Perfect JSON
@@ -31,7 +31,7 @@ def test_compute_metrics_exact_match():
             {"type": "employment", "subject": "Sarah Chen", "object": "NexGen Dynamics", "role": "CEO"}
         ]
     }
-    
+
     # Evaluate identical dict
     metrics = compute_metrics(gt, gt)
     assert metrics["schema_compliance"] == 1.0
@@ -68,10 +68,10 @@ def test_compute_metrics_mismatch():
     }
 
     metrics = compute_metrics(pred, gt)
-    
+
     # Check that schema complies (still valid types and keys)
     assert metrics["schema_compliance"] == 1.0
-    
+
     # Ground truth entities = {"nexgen", "sarah chen"}
     # Predicted entities = {"nexgen", "fake person"}
     # Shared = {"nexgen"}
@@ -79,13 +79,13 @@ def test_compute_metrics_mismatch():
     assert metrics["entity_recall"] == 0.5
     assert metrics["entity_precision"] == 0.5
     assert metrics["entity_f1"] == 0.5
-    
+
     # Dates: gt_dates = {("March 22, 2024", "2024-03-22")}
     # pred_dates = {("March 22, 2024", "March 22, 2024")}
     # Shared = empty
     assert metrics["date_normalization_recall"] == 0.0
     assert metrics["date_normalization_precision"] == 0.0
-    
+
     # Hallucinations: {"fake person"} -> count = 1
     assert metrics["hallucination_count"] == 1
 
@@ -96,12 +96,12 @@ def test_compute_metrics_flat_structure():
             {"type": "organization", "name": "NexGen"}
         ]
     }
-    
+
     pred = {
         "event_type": "funding",
         "entities": ["NexGen"]  # flat list of strings instead of list of dicts
     }
-    
+
     metrics = compute_metrics(pred, gt)
     assert metrics["schema_compliance"] == 0.0
     assert metrics["structural_fidelity"] == 0.0

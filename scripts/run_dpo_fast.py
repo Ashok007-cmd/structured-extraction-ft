@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """DPO training — single PeftModel with ref_model=None (TRL creates internal ref adapter)."""
 
-import json, logging, os
+import json
+import logging
+import os
 from pathlib import Path
 
 # Prevent CUDA allocator fragmentation on low-VRAM GPUs (must be set before torch import).
@@ -9,10 +11,10 @@ os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
-from peft import PeftModel
-from trl import DPOConfig, DPOTrainer
 from datasets import load_dataset
+from peft import PeftModel
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from trl import DPOConfig, DPOTrainer
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)

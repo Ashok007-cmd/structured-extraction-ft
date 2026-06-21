@@ -1,12 +1,13 @@
 import sys
 from pathlib import Path
-from unittest.mock import patch, MagicMock
-import pytest
+from unittest.mock import MagicMock, patch
+
 import torch
 
 # Enforce project path import for scripts/utils
 sys.path.append(str(Path(__file__).parent.parent.resolve()))
 from scripts.utils.model_loader import ModelLoader, get_dtype
+
 
 def test_get_dtype():
     assert get_dtype("float16") == torch.float16
@@ -67,7 +68,7 @@ def test_load_quantized_model_and_tokenizer(mock_prep, mock_peft, mock_causal_lm
             is_trainable=True,
             padding_side="right"
         )
-        
+
         assert model == mock_peft_model
         mock_prep.assert_called_once_with(mock_model)
         mock_peft.from_pretrained.assert_called_once_with(

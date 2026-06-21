@@ -81,6 +81,7 @@ select = [
 ]
 ignore = [
     "E501", # line too long (handled by line-length formatter)
+    "C901", # too complex — data-gen and metric functions are intentionally dense
 ]
 
 [tool.ruff.lint.isort]

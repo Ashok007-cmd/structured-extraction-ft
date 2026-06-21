@@ -1,8 +1,8 @@
 import sys
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 import yaml
-import pytest
 
 # Enforce project path import for scripts/utils
 sys.path.append(str(Path(__file__).parent.parent.resolve()))

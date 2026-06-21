@@ -13,10 +13,8 @@ Generates two datasets:
 
 import json
 import random
-import hashlib
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
-from dataclasses import dataclass, field, asdict
+from typing import Dict, List, Optional, Tuple
 
 random.seed(42)
 
@@ -547,8 +545,8 @@ def generate_sft_dataset(num_examples: int = 5000,
         return path
 
     print(f"Generating {num_examples} SFT examples...")
-    train_path = save_split(train, "train.jsonl")
-    eval_path = save_split(eval_data, "eval.jsonl")
+    save_split(train, "train.jsonl")
+    save_split(eval_data, "eval.jsonl")
 
     # Save a readable sample
     sample_path = Path(output_dir) / "sample.json"
@@ -561,7 +559,7 @@ def generate_sft_dataset(num_examples: int = 5000,
     for ex in examples:
         s = ex["scenario"]
         scenarios[s] = scenarios.get(s, 0) + 1
-    print(f"\nDataset composition by scenario:")
+    print("\nDataset composition by scenario:")
     for scenario, count in sorted(scenarios.items()):
         print(f"  {scenario}: {count} ({count/len(examples)*100:.1f}%)")
 

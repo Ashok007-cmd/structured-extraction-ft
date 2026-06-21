@@ -6,11 +6,11 @@ Runs the complete pipeline in separate processes to guarantee absolute
 reclamation of GPU memory (VRAM) between the training stages.
 """
 
-import sys
-import os
 import argparse
 import logging
+import os
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -34,15 +34,15 @@ def run_command(cmd: list, description: str):
     logger.info(f"STARTING: {description}")
     logger.info(f"Command: {' '.join(cmd)}")
     logger.info("=" * 60)
-    
+
     t0 = time.time()
     result = subprocess.run(cmd, capture_output=False, text=True)
     elapsed = time.time() - t0
-    
+
     if result.returncode != 0:
         logger.error(f"Failed: {description} (code: {result.returncode})")
         sys.exit(result.returncode)
-        
+
     logger.info(f"COMPLETED: {description} in {elapsed/60:.2f} minutes\n")
 
 

@@ -14,10 +14,8 @@ Produces:
 """
 
 import json
-import math
 from datetime import datetime
 from pathlib import Path
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
@@ -205,8 +203,8 @@ def build_sft_table(sft_data: dict) -> str:
         f"{'Step':>6}  {'Loss':>8}  {'Token Acc':>10}  {'Entropy':>10}",
         "-" * 44,
     ]
-    for s, l, a, e in zip(steps, loss, acc, entropy):
-        lines.append(f"{s:>6}  {l:>8.4f}  {a:>10.4f}  {e:>10.4f}")
+    for s, lv, a, e in zip(steps, loss, acc, entropy, strict=False):
+        lines.append(f"{s:>6}  {lv:>8.4f}  {a:>10.4f}  {e:>10.4f}")
 
     summary = sft_data.get("summary", {})
     if summary:
@@ -233,16 +231,16 @@ def build_dpo_table(dpo_data: dict) -> str:
     if has_rewards:
         header = f"{'Step':>6}  {'DPO Loss':>10}  {'Chosen':>10}  {'Rejected':>10}  {'Margin':>10}"
         lines = ["```", header, "-" * 56]
-        for i, (s, l) in enumerate(zip(steps, loss)):
+        for i, (s, lv) in enumerate(zip(steps, loss, strict=False)):
             c = chosen[i] if i < len(chosen) else 0.0
             r = rejected[i] if i < len(rejected) else 0.0
             m = margins[i] if i < len(margins) else 0.0
-            lines.append(f"{s:>6}  {l:>10.4f}  {c:>10.4f}  {r:>10.4f}  {m:>10.4f}")
+            lines.append(f"{s:>6}  {lv:>10.4f}  {c:>10.4f}  {r:>10.4f}  {m:>10.4f}")
     else:
         header = f"{'Step':>6}  {'DPO Loss':>10}"
         lines = ["```", header, "-" * 20]
-        for s, l in zip(steps, loss):
-            lines.append(f"{s:>6}  {l:>10.4f}")
+        for s, lv in zip(steps, loss, strict=False):
+            lines.append(f"{s:>6}  {lv:>10.4f}")
 
     summary = dpo_data.get("summary", {})
     if summary:
@@ -353,7 +351,7 @@ def generate_report():
     # DPO summary stats
     dpo_summary = dpo_data.get("summary", {}) if has_dpo else {}
     dpo_runtime = dpo_summary.get("train_runtime", 0) / 60 if has_dpo else 0
-    dpo_final_loss = (
+    (
         dpo_data["train_loss"][-1]
         if has_dpo and dpo_data.get("train_loss")
         else None

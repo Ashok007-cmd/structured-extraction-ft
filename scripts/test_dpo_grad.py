@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Test if single-model DPO works with is_trainable=True."""
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from peft import PeftModel
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
 BASE = "Qwen/Qwen2.5-0.5B-Instruct"
 SFT = "outputs/sft/adapter"
@@ -31,7 +31,7 @@ out = model(**inputs)
 print(f"Forward pass OK, loss shape: {out.loss.shape if out.loss is not None else 'no loss'}")
 loss = out.logits.mean()
 loss.backward()
-print(f"Backward pass OK")
+print("Backward pass OK")
 print(f"GPU memory: {torch.cuda.max_memory_allocated() / 1e9:.2f} GB")
 print(f"LoRA grad sample: {dict(list(model.named_parameters()))['base_model.model.model.layers.0.self_attn.q_proj.lora_A.default.weight'].grad is not None}")
 print("SUCCESS")

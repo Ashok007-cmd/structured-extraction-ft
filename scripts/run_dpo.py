@@ -9,22 +9,23 @@ Optimized for 4GB VRAM using single-model DPO and reference probability precompu
 
 import gc
 import json
+import logging
 import os
 import sys
 from pathlib import Path
-from typing import Optional, List
+from typing import List, Optional
+
 import yaml
-import logging
 
 # Prevent CUDA allocator fragmentation on low-VRAM GPUs (must be set before torch import).
 os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
 import torch
-from transformers import set_seed
-from trl import DPOTrainer, DPOConfig
 from datasets import load_dataset
 from pydantic import BaseModel, Field, field_validator
+from transformers import set_seed
+from trl import DPOConfig, DPOTrainer
 
 # Enforce project path import for scripts/utils
 sys.path.append(str(Path(__file__).parent.parent.resolve()))

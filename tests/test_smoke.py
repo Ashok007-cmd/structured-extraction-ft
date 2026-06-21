@@ -3,14 +3,13 @@ Lightweight smoke tests that run on CPU without loading real model weights.
 Verifies pipeline logic: dataset formatting, JSON extraction, metrics computation,
 and DPO format function — all without OOM risk.
 """
-import sys
 import json
+import sys
 from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent.resolve()))
 
-from scripts.evaluate import extract_json, compute_metrics
-
+from scripts.evaluate import compute_metrics, extract_json
 
 # ---------------------------------------------------------------------------
 # extract_json
