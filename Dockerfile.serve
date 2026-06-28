@@ -19,6 +19,11 @@ RUN pip install --no-cache-dir ".[serving]"
 COPY scripts ./scripts
 COPY data/schemas ./data/schemas
 
+# Run as non-root for container security hardening.
+RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
+RUN chown -R appuser:appgroup /app
+USER appuser
+
 ENV HF_HUB_OFFLINE=0 \
     TOKENIZERS_PARALLELISM=false \
     EXTRACT_HOST=0.0.0.0 \
@@ -29,4 +34,4 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=120s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')" || exit 1
 
-CMD ["uvicorn", "serving.api:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "serving.api:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

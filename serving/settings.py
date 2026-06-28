@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     # Concurrency / lifecycle
     max_concurrency: int = 1
     enable_warmup: bool = True
+    inference_timeout_seconds: float = 120.0
 
 
 def get_settings() -> Settings:

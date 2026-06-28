@@ -1,4 +1,5 @@
-from scripts.evaluate import compute_metrics, extract_json
+from scripts.evaluate import compute_metrics
+from scripts.utils.json_utils import extract_json
 
 
 def test_extract_json():

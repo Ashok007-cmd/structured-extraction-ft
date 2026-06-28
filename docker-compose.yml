@@ -15,7 +15,10 @@ services:
       - ./outputs:/app/outputs:ro
     deploy:
       resources:
+        limits:
+          memory: 8G
         reservations:
+          memory: 2G
           devices:
             - driver: nvidia
               count: 1

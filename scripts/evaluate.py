@@ -22,7 +22,6 @@ Also generates loss curves and comparison tables.
 import gc
 import json
 import logging
-import re
 import subprocess
 import sys
 import tempfile
@@ -38,6 +37,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 # Enforce project path import for scripts/utils
 sys.path.append(str(Path(__file__).parent.parent.resolve()))
+from scripts.utils.json_utils import extract_json
 from scripts.utils.model_loader import ModelLoader
 
 logging.basicConfig(
@@ -85,25 +85,6 @@ REQUIRED_DATE_FIELDS = {"raw", "normalized"}
 REQUIRED_RELATIONSHIP_FIELDS = {"type", "subject", "object"}
 
 
-def extract_json(text: str) -> Optional[Dict]:
-    """Extract JSON object from model output, handling markdown fences."""
-    # Try to find JSON between ```json and ``` markers
-    json_match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', text)
-    if json_match:
-        text = json_match.group(1)
-
-    # Try direct JSON parse
-    text = text.strip()
-    # Find first { and last }
-    start = text.find('{')
-    end = text.rfind('}')
-    if start != -1 and end != -1 and end > start:
-        text = text[start:end + 1]
-
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        return None
 
 
 def compute_metrics(predicted: Dict, ground_truth: Dict) -> Dict[str, float]:
@@ -411,8 +392,12 @@ def _run_single_model_eval(config_file: Optional[str], model_key: str, output_pa
     if config_file:
         with open(config_file) as f:
             overrides = yaml.safe_load(f)
-            for k, v in overrides.items():
+        allowed = {f.name for f in config.__dataclass_fields__.values()} if hasattr(config, "__dataclass_fields__") else set(vars(config).keys())
+        for k, v in overrides.items():
+            if k in allowed:
                 setattr(config, k, v)
+            else:
+                logger.warning("Ignoring unknown config key: %s", k)
 
     logger.info(f"Loading evaluation dataset from: {config.dataset_path}")
     dataset = load_dataset(
@@ -541,7 +526,10 @@ def main():
     config = EvalConfig()
     if args.config_file:
         with open(args.config_file) as f:
-            for k, v in yaml.safe_load(f).items():
+            overrides = yaml.safe_load(f)
+        allowed = set(vars(config).keys())
+        for k, v in overrides.items():
+            if k in allowed:
                 setattr(config, k, v)
     dataset = load_dataset(
         "json",

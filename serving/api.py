@@ -135,9 +135,16 @@ async def extract(payload: ExtractRequest, request: Request) -> ExtractResponse:
         async with semaphore:
             INFLIGHT_REQUESTS.inc()
             try:
-                parsed, raw_output, schema_valid, latency_ms = await asyncio.to_thread(
-                    model.extract, payload.text
+                inference_task = asyncio.to_thread(model.extract, payload.text)
+                parsed, raw_output, schema_valid, latency_ms = await asyncio.wait_for(
+                    inference_task, timeout=settings.inference_timeout_seconds
                 )
+            except asyncio.TimeoutError:
+                logger.error("Extraction timed out after %ss", settings.inference_timeout_seconds)
+                REQUEST_COUNT.labels(status="timeout").inc()
+                raise HTTPException(
+                    status_code=status.HTTP_504_GATEWAY_TIMEOUT, detail="Inference timed out"
+                ) from None
             except Exception:
                 logger.exception("Extraction failed")
                 REQUEST_COUNT.labels(status="error").inc()

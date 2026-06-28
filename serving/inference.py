@@ -7,7 +7,6 @@ runtime stays consistent with how the model was trained and evaluated.
 import gc
 import json
 import logging
-import re
 import time
 from pathlib import Path
 from typing import Optional, Tuple
@@ -16,6 +15,7 @@ import jsonschema
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
+from scripts.utils.json_utils import extract_json
 from scripts.utils.model_loader import ModelLoader
 from serving.settings import Settings
 
@@ -35,29 +35,6 @@ def _load_schema() -> Optional[dict]:
         with open(SCHEMA_PATH) as f:
             return json.load(f)
     return None
-
-
-def extract_json(text: str) -> Optional[dict]:
-    """Extract a JSON object from raw model output, handling markdown fences
-    and truncated trailing braces."""
-    json_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text)
-    if json_match:
-        text = json_match.group(1)
-
-    text = text.strip()
-    start = text.find("{")
-    end = text.rfind("}")
-    if start != -1 and end != -1 and end > start:
-        text = text[start:end + 1]
-    elif start != -1:
-        # Truncated output with no closing brace — try to recover.
-        last_brace = text.rfind("}")
-        text = text[start:last_brace + 1] if last_brace != -1 else text[start:]
-
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        return None
 
 
 class ExtractionModel:

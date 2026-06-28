@@ -29,11 +29,27 @@ fix or mitigation plan within 30 days, depending on severity.
 Areas of particular interest for security review:
 
 * The FastAPI inference service (`serving/`) — input validation, request
-  size limits, model/adapter path handling.
+  size limits, inference timeout, model/adapter path handling.
 * Dependency supply chain (`requirements.txt`, `pyproject.toml`).
-* Docker images and CI/CD workflows.
+* Docker images and CI/CD workflows (`Dockerfile.serve` runs as non-root `appuser`).
 * Handling of model artifacts and configuration files (no secrets should be
-  committed or baked into images).
+  committed or baked into images). Use `.env.example` as a template — never
+  commit a `.env` file with real credentials.
+
+## Security Architecture Notes
+
+| Control | Implementation |
+|---------|---------------|
+| Non-root container | `appuser` in `Dockerfile.serve` |
+| Input size cap | `EXTRACT_MAX_REQUEST_CHARS` (default 8 000 chars) |
+| Inference timeout | `EXTRACT_INFERENCE_TIMEOUT_SECONDS` (default 120 s) |
+| Concurrency cap | `EXTRACT_MAX_CONCURRENCY` semaphore |
+| No arbitrary code | `trust_remote_code=False` in all model loading paths |
+| Config validation | Only known dataclass fields accepted from YAML overrides |
+
+In production, the API should be placed behind a reverse proxy (nginx, Caddy) or
+API gateway with authentication (API keys, mTLS) — the current serving layer does
+not include authentication by design to keep the inference path dependency-free.
 
 ## Disclosure Policy
 

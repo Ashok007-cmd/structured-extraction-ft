@@ -9,7 +9,8 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent.resolve()))
 
-from scripts.evaluate import compute_metrics, extract_json
+from scripts.evaluate import compute_metrics
+from scripts.utils.json_utils import extract_json
 
 # ---------------------------------------------------------------------------
 # extract_json
