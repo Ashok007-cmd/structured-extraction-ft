@@ -10,7 +10,7 @@ SFT = "outputs/sft/adapter"
 bnb = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.bfloat16,
                           bnb_4bit_quant_type="nf4", bnb_4bit_use_double_quant=True)
 model = AutoModelForCausalLM.from_pretrained(BASE, quantization_config=bnb,
-                                              device_map="auto", trust_remote_code=True)
+                                              device_map="auto", trust_remote_code=False)
 model.config.use_cache = False
 model = PeftModel.from_pretrained(model, SFT, is_trainable=True)
 model.train()
@@ -24,7 +24,7 @@ lora_grad = all(p.requires_grad for n, p in model.named_parameters() if "lora_" 
 print(f"All LoRA params require grad: {lora_grad}")
 
 # Forward pass test
-tok = AutoTokenizer.from_pretrained(SFT, trust_remote_code=True)
+tok = AutoTokenizer.from_pretrained(SFT, trust_remote_code=False)
 tok.pad_token = tok.eos_token
 inputs = tok("Hello, how are you?", return_tensors="pt").to("cuda")
 out = model(**inputs)
