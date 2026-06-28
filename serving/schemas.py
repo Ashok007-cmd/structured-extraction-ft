@@ -8,56 +8,56 @@ class ExtractRequest(BaseModel):
 
 
 class Entity(BaseModel):
-    type: str
-    name: str
+    type: str = Field(..., description="Entity type, e.g. 'organization', 'person', 'location'")
+    name: str = Field(..., description="Canonical entity name as it appears in the text")
 
 
 class DateMention(BaseModel):
-    raw: str
-    normalized: str
-    context: Optional[str] = None
+    raw: str = Field(..., description="Date as it appears verbatim in the text")
+    normalized: str = Field(..., description="ISO 8601 normalized date string, e.g. '2026-03-03'")
+    context: Optional[str] = Field(None, description="Semantic role of the date, e.g. 'announcement'")
 
 
 class FinancialFigure(BaseModel):
-    type: str
-    amount: float
-    currency: Optional[str] = None
+    type: str = Field(..., description="Financial figure type, e.g. 'funding_raised', 'revenue'")
+    amount: float = Field(..., description="Numeric amount in base currency units")
+    currency: Optional[str] = Field(None, description="Currency symbol or code, e.g. '$', 'USD'")
 
 
 class Relationship(BaseModel):
-    type: str
-    subject: str
-    object: str
+    type: str = Field(..., description="Relationship type, e.g. 'acquired_by', 'invested_in'")
+    subject: str = Field(..., description="Subject entity name")
+    object: str = Field(..., description="Object entity name")
 
 
 class Metric(BaseModel):
-    name: str
-    value: Union[str, float]
+    name: str = Field(..., description="Metric name, e.g. 'headcount', 'market_share'")
+    value: Union[str, float] = Field(..., description="Metric value (numeric or string)")
 
 
 class ExtractionResult(BaseModel):
-    event_type: str
-    entities: List[Entity] = Field(default_factory=list)
-    dates: List[DateMention] = Field(default_factory=list)
-    financials: List[FinancialFigure] = Field(default_factory=list)
-    relationships: List[Relationship] = Field(default_factory=list)
-    metrics: List[Metric] = Field(default_factory=list)
+    event_type: str = Field(..., description="High-level event category, e.g. 'funding_round', 'acquisition'")
+    entities: List[Entity] = Field(default_factory=list, description="Named entities extracted from the text")
+    dates: List[DateMention] = Field(default_factory=list, description="Date mentions with ISO normalization")
+    financials: List[FinancialFigure] = Field(default_factory=list, description="Financial figures mentioned")
+    relationships: List[Relationship] = Field(default_factory=list, description="Entity-to-entity relationships")
+    metrics: List[Metric] = Field(default_factory=list, description="Quantitative metrics mentioned")
 
 
 class ExtractResponse(BaseModel):
-    result: Optional[ExtractionResult] = None
-    raw_output: str
-    valid_json: bool
-    schema_valid: bool
-    latency_ms: float
+    result: Optional[ExtractionResult] = Field(None, description="Parsed structured extraction result; null if output was not valid JSON")
+    raw_output: Optional[str] = Field(None, description="Raw model generation string (omitted when EXTRACT_INCLUDE_RAW_OUTPUT=false)")
+    valid_json: bool = Field(..., description="Whether the model output was parseable as JSON")
+    schema_valid: bool = Field(..., description="Whether the parsed JSON passed schema validation")
+    latency_ms: float = Field(..., description="End-to-end inference latency in milliseconds")
 
 
 class HealthResponse(BaseModel):
-    status: str
+    status: str = Field(..., description="Always 'ok' when the process is running")
 
 
 class ReadyResponse(BaseModel):
-    status: str
+    status: str = Field(..., description="'ready' when model is loaded, 'loading' otherwise")
     model_loaded: bool
     model_name_or_path: str
     adapter_path: Optional[str] = None

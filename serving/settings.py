@@ -37,6 +37,13 @@ class Settings(BaseSettings):
     enable_warmup: bool = True
     inference_timeout_seconds: float = 120.0
 
+    # Security — set EXTRACT_API_KEY to require Bearer token authentication.
+    # Leave unset (default) to run without auth (suitable for private/internal deployments).
+    api_key: Optional[str] = None
+
+    # Response — set False to omit raw model output from responses (reduces XSS surface).
+    include_raw_output: bool = True
+
 
 def get_settings() -> Settings:
     return Settings()

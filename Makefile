@@ -1,4 +1,4 @@
-.PHONY: help install install-dev lint format type test test-mem-capped serve load-test docker-build-serve docker-run-serve clean
+.PHONY: help install install-dev lint format type test test-mem-capped serve serve-dev load-test docker-build-serve docker-run-serve clean
 
 help:
 	@echo "Available targets:"
@@ -39,6 +39,9 @@ test-mem-capped:
 	systemd-run --user --scope -p MemoryMax=2G ./scripts/run_tests.sh
 
 serve:
+	uvicorn serving.api:app --host 0.0.0.0 --port 8000 --workers 1
+
+serve-dev:
 	uvicorn serving.api:app --host 0.0.0.0 --port 8000 --reload
 
 load-test:

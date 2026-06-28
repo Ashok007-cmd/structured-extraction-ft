@@ -13,10 +13,12 @@ Endpoints:
 
 import asyncio
 import logging
+import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, HTTPException, Request, Security, status
 from fastapi.responses import Response
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
 
 from serving.inference import ExtractionModel
@@ -36,6 +38,28 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+_bearer = HTTPBearer(auto_error=False)
+
+
+_BEARER_DEP = Security(_bearer)
+
+
+def _check_api_key(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = _BEARER_DEP,
+) -> None:
+    """Enforce Bearer token auth when EXTRACT_API_KEY is configured."""
+    settings = request.app.state.settings
+    if settings.api_key is None:
+        return  # auth disabled
+    if credentials is None or credentials.credentials != settings.api_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing API key",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
 REQUEST_COUNT = Counter(
     "extract_requests_total", "Total number of extraction requests", ["status"]
 )
@@ -45,6 +69,15 @@ REQUEST_LATENCY = Histogram(
 INFLIGHT_REQUESTS = Gauge(
     "extract_requests_inflight", "Number of extraction requests currently being processed"
 )
+
+
+async def _request_id_middleware(request: Request, call_next):
+    """Attach a unique request ID to every request for log correlation."""
+    request_id = str(uuid.uuid4())[:8]
+    request.state.request_id = request_id
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    return response
 
 
 @asynccontextmanager
@@ -79,6 +112,7 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+app.middleware("http")(_request_id_middleware)
 
 
 @app.get("/healthz", response_model=HealthResponse, tags=["ops"])
@@ -110,7 +144,11 @@ async def metrics() -> Response:
 
 
 @app.post("/v1/extract", response_model=ExtractResponse, tags=["extraction"])
-async def extract(payload: ExtractRequest, request: Request) -> ExtractResponse:
+async def extract(
+    payload: ExtractRequest,
+    request: Request,
+    _auth: None = Security(_check_api_key),
+) -> ExtractResponse:
     """Extract structured JSON from a piece of unstructured text."""
     model: ExtractionModel = request.app.state.model
     settings = request.app.state.settings
@@ -167,7 +205,7 @@ async def extract(payload: ExtractRequest, request: Request) -> ExtractResponse:
 
     return ExtractResponse(
         result=result,
-        raw_output=raw_output,
+        raw_output=raw_output if settings.include_raw_output else None,
         valid_json=parsed is not None,
         schema_valid=schema_valid,
         latency_ms=latency_ms,

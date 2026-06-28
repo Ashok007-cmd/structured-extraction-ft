@@ -336,7 +336,7 @@ def load_model_and_tokenizer(
     base_model_path: str,
     adapter_path: Optional[str] = None,
     use_4bit: bool = True,
-) -> tuple:
+) -> "tuple[AutoModelForCausalLM, AutoTokenizer]":
     """Load model with optional LoRA adapter using unified loader."""
     return ModelLoader.load_quantized_model_and_tokenizer(
         model_name_or_path=base_model_path,
